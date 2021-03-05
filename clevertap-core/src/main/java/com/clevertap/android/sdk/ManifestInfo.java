@@ -98,7 +98,7 @@ public class ManifestInfo {
         xiaomiAppID = metaData.getString(Constants.LABEL_XIAOMI_APP_ID);
 
         if (LC == null) {
-            LC = _getManifestStringValueForKey(metaData, Constants.LABEL_LC);
+            LC = metaData.getString(Constants.LABEL_LC);
         }
 
         profileKeys = parseProfileKeys(metaData);
