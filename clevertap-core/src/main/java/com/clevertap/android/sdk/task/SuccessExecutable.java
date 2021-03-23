@@ -5,27 +5,24 @@ import java.util.concurrent.Executor;
 
 class SuccessExecutable<TResult> extends Executable<TResult> {
 
-    private final CleverTapInstanceConfig mConfig;
-
-    private final OnSuccessListener<TResult> mSuccessListener;
+    private final OnSuccessListener<TResult> successListener;
 
     protected SuccessExecutable(final Executor executor, OnSuccessListener<TResult> listener,
             final CleverTapInstanceConfig config) {
         super(executor);
-        mSuccessListener = listener;
-        mConfig = config;
+        successListener = listener;
     }
 
     public OnSuccessListener<TResult> getSuccessListener() {
-        return mSuccessListener;
+        return successListener;
     }
 
     @Override
     void execute(final TResult input) {
-        mExecutor.execute(new Runnable() {
+        executor.execute(new Runnable() {
             @Override
             public void run() {
-                mSuccessListener.onSuccess(input);
+                successListener.onSuccess(input);
             }
         });
     }

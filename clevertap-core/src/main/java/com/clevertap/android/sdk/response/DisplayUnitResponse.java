@@ -16,26 +16,24 @@ public class DisplayUnitResponse extends CleverTapResponseDecorator {
 
     private final Object displayUnitControllerLock = new Object();
 
-    private CTDisplayUnitController mCTDisplayUnitController;
+    private final BaseCallbackManager callbackManager;
 
-    private final BaseCallbackManager mCallbackManager;
+    private final CleverTapResponse cleverTapResponse;
 
-    private final CleverTapResponse mCleverTapResponse;
+    private final CleverTapInstanceConfig config;
 
-    private final CleverTapInstanceConfig mConfig;
+    private final ControllerManager controllerManager;
 
-    private final Logger mLogger;
-
-    private final ControllerManager mControllerManager;
+    private final Logger logger;
 
     public DisplayUnitResponse(CleverTapResponse cleverTapResponse,
             CleverTapInstanceConfig config,
             BaseCallbackManager callbackManager, ControllerManager controllerManager) {
-        mCleverTapResponse = cleverTapResponse;
-        mConfig = config;
-        mLogger = mConfig.getLogger();
-        mCallbackManager = callbackManager;
-        mControllerManager = controllerManager;
+        this.cleverTapResponse = cleverTapResponse;
+        this.config = config;
+        logger = this.config.getLogger();
+        this.callbackManager = callbackManager;
+        this.controllerManager = controllerManager;
     }
 
     //Logic for the processing of Display Unit response
@@ -43,40 +41,41 @@ public class DisplayUnitResponse extends CleverTapResponseDecorator {
     @Override
     public void processResponse(final JSONObject response, final String stringBody, final Context context) {
 
-        mLogger.verbose(mConfig.getAccountId(), "Processing Display Unit items...");
+        logger.verbose(config.getAccountId(), "Processing Display Unit items...");
 
-        if (mConfig.isAnalyticsOnly()) {
-            mLogger.verbose(mConfig.getAccountId(),
+        if (config.isAnalyticsOnly()) {
+            logger.verbose(config.getAccountId(),
                     "CleverTap instance is configured to analytics only, not processing Display Unit response");
             // process feature flag response
-            mCleverTapResponse.processResponse(response, stringBody, context);
+            cleverTapResponse.processResponse(response, stringBody, context);
             return;
         }
 
+        // Adding response null check because this will get processed first in case of analytics
         if (response == null) {
-            mLogger.verbose(mConfig.getAccountId(), Constants.FEATURE_DISPLAY_UNIT
+            logger.verbose(config.getAccountId(), Constants.FEATURE_DISPLAY_UNIT
                     + "Can't parse Display Unit Response, JSON response object is null");
             return;
         }
 
         if (!response.has(Constants.DISPLAY_UNIT_JSON_RESPONSE_KEY)) {
-            mLogger.verbose(mConfig.getAccountId(),
+            logger.verbose(config.getAccountId(),
                     Constants.FEATURE_DISPLAY_UNIT + "JSON object doesn't contain the Display Units key");
             // process feature flag response
-            mCleverTapResponse.processResponse(response, stringBody, context);
+            cleverTapResponse.processResponse(response, stringBody, context);
             return;
         }
         try {
-            mLogger
-                    .verbose(mConfig.getAccountId(),
+            logger
+                    .verbose(config.getAccountId(),
                             Constants.FEATURE_DISPLAY_UNIT + "Processing Display Unit response");
             parseDisplayUnits(response.getJSONArray(Constants.DISPLAY_UNIT_JSON_RESPONSE_KEY));
         } catch (Throwable t) {
-            mLogger.verbose(mConfig.getAccountId(), Constants.FEATURE_DISPLAY_UNIT + "Failed to parse response", t);
+            logger.verbose(config.getAccountId(), Constants.FEATURE_DISPLAY_UNIT + "Failed to parse response", t);
         }
 
         // process feature flag response
-        mCleverTapResponse.processResponse(response, stringBody, context);
+        cleverTapResponse.processResponse(response, stringBody, context);
     }
 
     /**
@@ -86,21 +85,19 @@ public class DisplayUnitResponse extends CleverTapResponseDecorator {
      */
     private void parseDisplayUnits(JSONArray messages) {
         if (messages == null || messages.length() == 0) {
-            mLogger.verbose(mConfig.getAccountId(),
+            logger.verbose(config.getAccountId(),
                     Constants.FEATURE_DISPLAY_UNIT + "Can't parse Display Units, jsonArray is either empty or null");
             return;
         }
 
         synchronized (displayUnitControllerLock) {// lock to avoid multiple instance creation for controller
-            if (mCTDisplayUnitController == null) {
-                mCTDisplayUnitController = new CTDisplayUnitController();
-                //TODO add a mechanism to transfer display unit lazily without using corestate instance
-                //getCoreState().setCTDisplayUnitController(mCTDisplayUnitController);//TODO
-                mControllerManager.setCTDisplayUnitController(mCTDisplayUnitController);
+            if (controllerManager.getCTDisplayUnitController() == null) {
+                controllerManager.setCTDisplayUnitController(new CTDisplayUnitController());
             }
         }
-        ArrayList<CleverTapDisplayUnit> displayUnits = mControllerManager.getCTDisplayUnitController().updateDisplayUnits(messages);
+        ArrayList<CleverTapDisplayUnit> displayUnits = controllerManager.getCTDisplayUnitController()
+                .updateDisplayUnits(messages);
 
-        mCallbackManager.notifyDisplayUnitsLoaded(displayUnits);
+        callbackManager.notifyDisplayUnitsLoaded(displayUnits);
     }
 }

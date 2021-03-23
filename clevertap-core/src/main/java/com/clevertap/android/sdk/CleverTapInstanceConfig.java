@@ -13,8 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.RestrictTo.Scope;
 import com.clevertap.android.sdk.Constants.IdentityType;
-import com.clevertap.android.sdk.utils.LogConstants;
-import com.clevertap.android.sdk.utils.NullConstants;
+import com.clevertap.android.sdk.login.LoginConstants;
 import java.util.ArrayList;
 import java.util.Arrays;
 import org.json.JSONObject;
@@ -69,7 +68,7 @@ public class CleverTapInstanceConfig implements Parcelable {
 
     private boolean personalization;
 
-    private String[] identityKeys = NullConstants.NULL_STRING_ARRAY;
+    private String[] identityKeys = Constants.NULL_STRING_ARRAY;
 
     private boolean sslPinning;
 
@@ -147,7 +146,7 @@ public class CleverTapInstanceConfig implements Parcelable {
          */
         if (isDefaultInstance) {
             identityKeys = manifest.getProfileKeys();
-            log(LogConstants.LOG_TAG_ON_USER_LOGIN, "Setting Profile Keys from Manifest: " + Arrays
+            log(LoginConstants.LOG_TAG_ON_USER_LOGIN, "Setting Profile Keys from Manifest: " + Arrays
                     .toString(identityKeys));
         }
         this.staging = manifest.getLC() != null ? Integer.parseInt(manifest.getLC()) : 0;
@@ -340,7 +339,7 @@ public class CleverTapInstanceConfig implements Parcelable {
     public void setIdentityKeys(@IdentityType String... identityKeys) {
         if (!isDefaultInstance) {
             this.identityKeys = identityKeys;
-            log(LogConstants.LOG_TAG_ON_USER_LOGIN, "Setting Profile Keys via setter: " + Arrays
+            log(LoginConstants.LOG_TAG_ON_USER_LOGIN, "Setting Profile Keys via setter: " + Arrays
                     .toString(this.identityKeys));
         }
     }

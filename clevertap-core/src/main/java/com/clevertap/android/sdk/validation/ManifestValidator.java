@@ -11,13 +11,14 @@ import com.clevertap.android.sdk.CleverTapAPI;
 import com.clevertap.android.sdk.DeviceInfo;
 import com.clevertap.android.sdk.InAppNotificationActivity;
 import com.clevertap.android.sdk.Logger;
+import com.clevertap.android.sdk.Utils;
+import com.clevertap.android.sdk.inbox.CTInboxActivity;
 import com.clevertap.android.sdk.pushnotification.CTNotificationIntentService;
 import com.clevertap.android.sdk.pushnotification.CTPushNotificationReceiver;
 import com.clevertap.android.sdk.pushnotification.PushConstants.PushType;
 import com.clevertap.android.sdk.pushnotification.PushProviders;
 import com.clevertap.android.sdk.pushnotification.amp.CTBackgroundIntentService;
 import com.clevertap.android.sdk.pushnotification.amp.CTBackgroundJobService;
-import com.clevertap.android.sdk.utils.Utils;
 import java.util.ArrayList;
 
 
@@ -61,29 +62,55 @@ public final class ManifestValidator {
                     CTBackgroundIntentService.class.getName());
             validateActivityInManifest((Application) context.getApplicationContext(),
                     InAppNotificationActivity.class);
+            validateActivityInManifest((Application) context.getApplicationContext(),
+                    CTInboxActivity.class);
+            validateReceiverInManifest((Application) context.getApplicationContext(),
+                    "com.clevertap.android.geofence.CTGeofenceReceiver");
+            validateReceiverInManifest((Application) context.getApplicationContext(),
+                    "com.clevertap.android.geofence.CTLocationUpdateReceiver");
+            validateReceiverInManifest((Application) context.getApplicationContext(),
+                    "com.clevertap.android.geofence.CTGeofenceBootReceiver");
         } catch (Exception e) {
             Logger.v("Receiver/Service issue : " + e.toString());
-
         }
         ArrayList<PushType> enabledPushTypes = pushProviders.getAvailablePushTypes();
         if (enabledPushTypes == null) {
             return;
         }
+
         for (PushType pushType : enabledPushTypes) {
-            //no-op
             if (pushType == PushType.FCM) {
                 try {
-                    // use class name string directly here to avoid class not found issues on class import, because we only use FCM
+                    // use class name string directly here to avoid class not found issues on class import
                     validateServiceInManifest((Application) context.getApplicationContext(),
                             "com.clevertap.android.sdk.pushnotification.fcm.FcmMessageListenerService");
-                    validateServiceInManifest((Application) context.getApplicationContext(),
-                            "com.clevertap.android.sdk.FcmTokenListenerService");
                 } catch (Exception e) {
                     Logger.v("Receiver/Service issue : " + e.toString());
 
                 } catch (Error error) {
                     Logger.v("FATAL : " + error.getMessage());
+                }
+            }else if(pushType == PushType.HPS){
+                try {
+                    // use class name string directly here to avoid class not found issues on class import
+                    validateServiceInManifest((Application) context.getApplicationContext(),
+                            "com.clevertap.android.hms.CTHmsMessageService");
+                } catch (Exception e) {
+                    Logger.v("Receiver/Service issue : " + e.toString());
 
+                } catch (Error error) {
+                    Logger.v("FATAL : " + error.getMessage());
+                }
+            }else if(pushType == PushType.XPS){
+                try {
+                    // use class name string directly here to avoid class not found issues on class import
+                    validateReceiverInManifest((Application) context.getApplicationContext(),
+                            "com.clevertap.android.xps.XiaomiMessageReceiver");
+                } catch (Exception e) {
+                    Logger.v("Receiver/Service issue : " + e.toString());
+
+                } catch (Error error) {
+                    Logger.v("FATAL : " + error.getMessage());
                 }
             }
         }
@@ -122,11 +149,11 @@ public final class ManifestValidator {
 
         for (ActivityInfo activityInfo : receivers) {
             if (activityInfo.name.equals(receiverClassName)) {
-                Logger.i(receiverClassName.replaceFirst("com.clevertap.android.sdk.", "") + " is present");
+                Logger.i(receiverClassName.replaceFirst("com.clevertap.android.", "") + " is present");
                 return;
             }
         }
-        Logger.i(receiverClassName.replaceFirst("com.clevertap.android.sdk.", "") + " not present");
+        Logger.i(receiverClassName.replaceFirst("com.clevertap.android.", "") + " not present");
     }
 
     private static void validateServiceInManifest(Application application, String serviceClassName)
