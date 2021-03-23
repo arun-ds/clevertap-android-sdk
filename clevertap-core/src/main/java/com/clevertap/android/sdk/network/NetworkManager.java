@@ -318,11 +318,15 @@ public class NetworkManager extends BaseNetworkManager {
     String getDomainFromPrefsOrMetadata(final EventGroup eventGroup) {
 
         try {
-            final String region = config.getAccountRegion();
+            String region = config.getAccountRegion();
+            if (config.getStaging() > 0 && !region.isEmpty() && !region.equals("in1") && !region.equals("sg1")) {
+                region = region + "-staging-" + config.getStaging();
+            }
             if (region != null && region.trim().length() > 0) {
                 // Always set this to 0 so that the handshake is not performed during a HTTP failure
                 setResponseFailureCount(0);
                 if (eventGroup.equals(EventGroup.PUSH_NOTIFICATION_VIEWED)) {
+                    region = region.substring(0, 3);
                     return region.trim().toLowerCase() + eventGroup.httpResource + "." + Constants.PRIMARY_DOMAIN;
                 } else {
                     return region.trim().toLowerCase() + "." + Constants.PRIMARY_DOMAIN;
