@@ -12,7 +12,6 @@ import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
-import android.os.RemoteException;
 import android.telephony.TelephonyManager;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
@@ -187,13 +186,14 @@ public class DeviceInfo {
         }
 
         private boolean getNotificationEnabledForUser() {
-            boolean isNotificationEnabled;
+            boolean isNotificationEnabled = true;
             try {
-               isNotificationEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled();
-            }catch (RuntimeException e){
-                isNotificationEnabled = false;
+                isNotificationEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled();
+            } catch (RuntimeException rte) {
+                Logger.d("Runtime exception caused when checking whether notification are enabled or not");
+                rte.printStackTrace();
             }
-            return isNotificationEnabled;
+            return isNotificationEnabled;//returns true if any exception is raised.
         }
 
         private String getOsName() {
