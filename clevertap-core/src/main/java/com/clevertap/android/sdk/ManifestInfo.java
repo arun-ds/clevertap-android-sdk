@@ -26,7 +26,9 @@ public class ManifestInfo {
 
     private static ManifestInfo instance;
 
-    private static String excludedActivities;
+    private static String excludedActivitiesForLifecycleMethods;
+
+    private static String excludedActivitiesForInApps;
 
     private static boolean sslPinning;
 
@@ -79,7 +81,9 @@ public class ManifestInfo {
         notificationIcon = _getManifestStringValueForKey(metaData, Constants.LABEL_NOTIFICATION_ICON);
         useADID = "1".equals(_getManifestStringValueForKey(metaData, Constants.LABEL_USE_GOOGLE_AD_ID));
         appLaunchedDisabled = "1".equals(_getManifestStringValueForKey(metaData, Constants.LABEL_DISABLE_APP_LAUNCH));
-        excludedActivities = _getManifestStringValueForKey(metaData, Constants.LABEL_INAPP_EXCLUDE);
+        excludedActivitiesForInApps = _getManifestStringValueForKey(metaData, Constants.LABEL_INAPP_EXCLUDE);
+        excludedActivitiesForLifecycleMethods = _getManifestStringValueForKey(metaData,
+                Constants.LABEL_ACTIVITY_EXCLUDE);
         sslPinning = "1".equals(_getManifestStringValueForKey(metaData, Constants.LABEL_SSL_PINNING));
         backgroundSync = "1".equals(_getManifestStringValueForKey(metaData, Constants.LABEL_BACKGROUND_SYNC));
         useCustomID = "1".equals(_getManifestStringValueForKey(metaData, Constants.LABEL_CUSTOM_ID));
@@ -111,8 +115,24 @@ public class ManifestInfo {
         return accountId;
     }
 
+    public String getExcludedActivities() {
+        return excludedActivitiesForInApps;
+    }
+
+    public String getExcludedActivitiesForLifecycleMethods() {
+        return excludedActivitiesForLifecycleMethods;
+    }
+
     public String getFCMSenderId() {
         return fcmSenderId;
+    }
+
+    public String getIntentServiceName() {
+        return intentServiceName;
+    }
+
+    public String getNotificationIcon() {
+        return notificationIcon;
     }
 
     public String[] getProfileKeys() {
@@ -137,18 +157,6 @@ public class ManifestInfo {
 
     String getAcountToken() {
         return accountToken;
-    }
-
-    public String getExcludedActivities() {
-        return excludedActivities;
-    }
-
-    public String getIntentServiceName() {
-        return intentServiceName;
-    }
-
-    public String getNotificationIcon() {
-        return notificationIcon;
     }
 
     String getPackageName() {
