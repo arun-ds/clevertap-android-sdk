@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.RestrictTo.Scope;
+import androidx.annotation.WorkerThread;
 import com.clevertap.android.sdk.displayunits.DisplayUnitListener;
 import com.clevertap.android.sdk.displayunits.model.CleverTapDisplayUnit;
 import com.clevertap.android.sdk.events.EventDetail;
@@ -28,6 +29,7 @@ import com.clevertap.android.sdk.featureFlags.CTFeatureFlagsController;
 import com.clevertap.android.sdk.inbox.CTInboxActivity;
 import com.clevertap.android.sdk.inbox.CTInboxMessage;
 import com.clevertap.android.sdk.inbox.CTMessageDAO;
+import com.clevertap.android.sdk.interfaces.OnInitDeviceIDListener;
 import com.clevertap.android.sdk.product_config.CTProductConfigController;
 import com.clevertap.android.sdk.product_config.CTProductConfigListener;
 import com.clevertap.android.sdk.pushnotification.CTPushNotificationListener;
@@ -73,7 +75,8 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
     public enum LogLevel {
         OFF(-1),
         INFO(0),
-        DEBUG(2);
+        DEBUG(2),
+        VERBOSE(3);
 
         private final int value;
 
@@ -629,7 +632,7 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
      *
      * @param level Can be one of the following:  -1 (disables all debugging), 0 (default, shows minimal SDK
      *              integration related logging),
-     *              1(shows debug output)
+     *              1(shows debug output), 3(shows verbose output)
      */
     @SuppressWarnings("WeakerAccess")
     public static void setDebugLevel(int level) {
@@ -642,7 +645,7 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
      *
      * @param level Can be one of the following: LogLevel.OFF (disables all debugging), LogLevel.INFO (default, shows
      *              minimal SDK integration related logging),
-     *              LogLevel.DEBUG(shows debug output)
+     *              LogLevel.DEBUG(shows debug output),LogLevel.VERBOSE(shows verbose output)
      */
     @SuppressWarnings({"unused"})
     public static void setDebugLevel(LogLevel level) {
@@ -986,6 +989,12 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
     private CleverTapAPI(final Context context, final CleverTapInstanceConfig config, String cleverTapID) {
         this.context = context;
 
+       /* new Thread("SharedPreferences-load") {
+            public void run() {
+                StorageHelper.getPreferences(context.getApplicationContext());
+            }
+        }.start();*/
+
         CoreState coreState = CleverTapFactory
                 .getCoreState(context, config, cleverTapID);
         setCoreState(coreState);
@@ -1005,7 +1014,6 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
         if (now - CoreMetaData.getInitialAppEnteredForegroundTime() > 5) {
             this.coreState.getConfig().setCreatedPostAppLaunch();
         }
-
 
         task = CTExecutorFactory.executors(config).postAsyncSafelyTask();
         task.execute("setStatesAsync", new Callable<Void>() {
@@ -1264,8 +1272,12 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
      * Returns a unique CleverTap identifier suitable for use with install attribution providers.
      *
      * @return The attribution identifier currently being used to identify this user.
+     *
+     * <p><br><span style="color:red;background:#ffcc99" >&#9888; this method may take a long time to return,
+     * so you should not call it from the application main thread</span></p>
      */
     @SuppressWarnings("unused")
+    @WorkerThread
     public String getCleverTapAttributionIdentifier() {
         return coreState.getDeviceInfo().getAttributionID();
     }
@@ -1274,10 +1286,30 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
      * Returns a unique identifier by which CleverTap identifies this user.
      *
      * @return The user identifier currently being used to identify this user.
+     *
+     * <p><br><span style="color:red;background:#ffcc99" >&#9888; this method may take a long time to return,
+     * so you should not call it from the application main thread</span></p>
      */
     @SuppressWarnings({"unused", "WeakerAccess"})
+    @WorkerThread
     public String getCleverTapID() {
         return coreState.getDeviceInfo().getDeviceID();
+    }
+
+    /**
+     * Returns a unique identifier by which CleverTap identifies this user, on Main thread Callback.
+     *
+     * @param onInitDeviceIDListener non-null callback to retrieve identifier on main thread.
+     */
+    public void getCleverTapID(@NonNull OnInitDeviceIDListener onInitDeviceIDListener) {
+        Task<Void> taskDeviceCachedInfo = CTExecutorFactory.executors(getConfig()).ioTask();
+        taskDeviceCachedInfo.execute("getCleverTapID", new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                onInitDeviceIDListener.onInitDeviceID(coreState.getDeviceInfo().getDeviceID());
+                return null;
+            }
+        });
     }
 
     @RestrictTo(Scope.LIBRARY)
@@ -2327,22 +2359,44 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
 
     //To be called from DeviceInfo AdID GUID generation
     void deviceIDCreated(String deviceId) {
-        Logger.v("Initializing InAppFC after Device ID Created = " + deviceId);
-        coreState.getControllerManager()
-                .setInAppFCManager(new InAppFCManager(context, coreState.getConfig(), deviceId));
-        Logger.v("Initializing ABTesting after Device ID Created = " + deviceId);
+
+        String accountId = coreState.getConfig().getAccountId();
+
+        if (coreState.getControllerManager() == null) {
+            Logger.v(accountId, "ControllerManager not set yet! Returning from deviceIDCreated()");
+            return;
+        }
+
+        if (coreState.getControllerManager().getInAppFCManager() == null) {
+            Logger.v(accountId, "Initializing InAppFC after Device ID Created = " + deviceId);
+            coreState.getControllerManager()
+                    .setInAppFCManager(new InAppFCManager(context, coreState.getConfig(), deviceId));
+        }
 
         /*
            Reinitialising product config & Feature Flag controllers with google ad id.
         */
-        if (coreState.getControllerManager().getCTFeatureFlagsController() != null) {
-            coreState.getControllerManager().getCTFeatureFlagsController().setGuidAndInit(deviceId);
+        CTFeatureFlagsController ctFeatureFlagsController = coreState.getControllerManager()
+                .getCTFeatureFlagsController();
+
+        if (ctFeatureFlagsController != null) {
+            if (!ctFeatureFlagsController.isInitialized()) {
+                Logger.v(accountId,
+                        "Initializing Feature Flags after Device ID Created = " + deviceId);
+            }
+            ctFeatureFlagsController.setGuidAndInit(deviceId);
         }
-        if (coreState.getControllerManager().getCTProductConfigController() != null) {
-            coreState.getControllerManager().getCTProductConfigController().setGuidAndInit(deviceId);
+        CTProductConfigController ctProductConfigController = coreState.getControllerManager()
+                .getCTProductConfigController();
+
+        if (ctProductConfigController != null) {
+            if (!ctProductConfigController.isInitialized()) {
+                Logger.v(accountId,
+                        "Initializing Product Config after Device ID Created = " + deviceId);
+            }
+            ctProductConfigController.setGuidAndInit(deviceId);
         }
-        getConfigLogger()
-                .verbose("Got device id from DeviceInfo, notifying user profile initialized to SyncListener");
+        Logger.v(accountId, "Got device id from DeviceInfo, notifying user profile initialized to SyncListener");
         coreState.getCallbackManager().notifyUserProfileInitialized(deviceId);
     }
 
