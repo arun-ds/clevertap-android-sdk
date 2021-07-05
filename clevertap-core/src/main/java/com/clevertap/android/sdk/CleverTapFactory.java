@@ -58,8 +58,7 @@ class CleverTapFactory {
                 ctLockManager, callbackManager, deviceInfo, baseDatabaseManager);
         coreState.setControllerManager(controllerManager);
 
-        if (coreState.getDeviceInfo() != null && coreState.getDeviceInfo().getDeviceID() != null
-                && controllerManager.getInAppFCManager() == null) {
+        if (coreState.getDeviceInfo() != null && coreState.getDeviceInfo().getDeviceID() != null) {
             coreState.getConfig().getLogger()
                     .verbose("Initializing InAppFC with device Id = " + coreState.getDeviceInfo().getDeviceID());
             controllerManager
