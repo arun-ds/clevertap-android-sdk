@@ -806,11 +806,10 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
             instances.put(config.getAccountId(), instance);
             final CleverTapAPI finalInstance = instance;
             Task<Void> task = CTExecutorFactory.executors(instance.coreState.getConfig()).postAsyncSafelyTask();
-            task.execute("notifyProfileInitialized", new Callable<Void>() {
+            task.execute("recordDeviceIDErrors", new Callable<Void>() {
                 @Override
                 public Void call() {
                     if (finalInstance.getCleverTapID() != null) {
-                        finalInstance.coreState.getCallbackManager().notifyUserProfileInitialized();
                         finalInstance.coreState.getLoginController().recordDeviceIDErrors();
                     }
                     return null;
@@ -820,6 +819,7 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
                 .validateCTID(cleverTapID)) {
             instance.coreState.getLoginController().asyncProfileSwitchUser(null, null, cleverTapID);
         }
+        Logger.v(config.getAccountId() + ":async_deviceID", "CleverTapAPI instance = " + instance);
         return instance;
     }
 
@@ -998,6 +998,7 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
         CoreState coreState = CleverTapFactory
                 .getCoreState(context, config, cleverTapID);
         setCoreState(coreState);
+        getConfigLogger().verbose(config.getAccountId() + ":async_deviceID", "CoreState is set");
 
         Task<Void> task = CTExecutorFactory.executors(config).postAsyncSafelyTask();
         task.execute("CleverTapAPI#initializeDeviceInfo", new Callable<Void>() {
@@ -1288,8 +1289,12 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
      * Returns a unique CleverTap identifier suitable for use with install attribution providers.
      *
      * @return The attribution identifier currently being used to identify this user.
+     *
+     * <p><br><span style="color:red;background:#ffcc99" >&#9888; this method may take a long time to return,
+     * so you should not call it from the application main thread</span></p>
      */
     @SuppressWarnings("unused")
+    @WorkerThread
     public String getCleverTapAttributionIdentifier() {
         return coreState.getDeviceInfo().getAttributionID();
     }
@@ -1298,13 +1303,31 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
      * Returns a unique identifier by which CleverTap identifies this user.
      *
      * @return The user identifier currently being used to identify this user.
+     *
+     * <p><br><span style="color:red;background:#ffcc99" >&#9888; this method may take a long time to return,
+     * so you should not call it from the application main thread</span></p>
      */
     @SuppressWarnings({"unused", "WeakerAccess"})
+    @WorkerThread
     public String getCleverTapID() {
         return coreState.getDeviceInfo().getDeviceID();
     }
 
-    //Network Info handling
+    /**
+     * Returns a unique identifier by which CleverTap identifies this user, on Main thread Callback.
+     *
+     * @param onInitDeviceIDListener non-null callback to retrieve identifier on main thread.
+     */
+    public void getCleverTapID(@NonNull OnInitDeviceIDListener onInitDeviceIDListener) {
+        Task<Void> taskDeviceCachedInfo = CTExecutorFactory.executors(getConfig()).ioTask();
+        taskDeviceCachedInfo.execute("getCleverTapID", new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                onInitDeviceIDListener.onInitDeviceID(coreState.getDeviceInfo().getDeviceID());
+                return null;
+            }
+        });
+    }
 
     @RestrictTo(Scope.LIBRARY)
     public CoreState getCoreState() {
@@ -2416,22 +2439,45 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
 
     //To be called from DeviceInfo AdID GUID generation
     void deviceIDCreated(String deviceId) {
-        Logger.v("Initializing InAppFC after Device ID Created = " + deviceId);
-        coreState.getControllerManager()
-                .setInAppFCManager(new InAppFCManager(context, coreState.getConfig(), deviceId));
-        Logger.v("Initializing ABTesting after Device ID Created = " + deviceId);
 
-        /*
-           Reinitialising product config & Feature Flag controllers with google ad id.
-        */
-        if (coreState.getControllerManager().getCTFeatureFlagsController() != null) {
-            coreState.getControllerManager().getCTFeatureFlagsController().setGuidAndInit(deviceId);
+        String accountId = coreState.getConfig().getAccountId();
+
+        if (coreState.getControllerManager() == null) {
+            getConfigLogger().verbose(accountId + ":async_deviceID",
+                    "ControllerManager not set yet! Returning from deviceIDCreated()");
+            return;
         }
-        if (coreState.getControllerManager().getCTProductConfigController() != null) {
-            coreState.getControllerManager().getCTProductConfigController().setGuidAndInit(deviceId);
+
+        if (coreState.getControllerManager().getInAppFCManager() == null) {
+            getConfigLogger().verbose(accountId + ":async_deviceID",
+                    "Initializing InAppFC after Device ID Created = " + deviceId);
+            coreState.getControllerManager()
+                    .setInAppFCManager(new InAppFCManager(context, coreState.getConfig(), deviceId));
         }
-        getConfigLogger()
-                .verbose("Got device id from DeviceInfo, notifying user profile initialized to SyncListener");
+
+        /**
+         * Reinitialising product config & Feature Flag controllers with device id if it's null
+         * during first initialisation
+         */
+        CTFeatureFlagsController ctFeatureFlagsController = coreState.getControllerManager()
+                .getCTFeatureFlagsController();
+
+        if (ctFeatureFlagsController != null && TextUtils.isEmpty(ctFeatureFlagsController.getGuid())) {
+            getConfigLogger().verbose(accountId + ":async_deviceID",
+                    "Initializing Feature Flags after Device ID Created = " + deviceId);
+            ctFeatureFlagsController.setGuidAndInit(deviceId);
+        }
+        CTProductConfigController ctProductConfigController = coreState.getControllerManager()
+                .getCTProductConfigController();
+
+        if (ctProductConfigController != null && TextUtils
+                .isEmpty(ctProductConfigController.getSettings().getGuid())) {
+            getConfigLogger().verbose(accountId + ":async_deviceID",
+                    "Initializing Product Config after Device ID Created = " + deviceId);
+            ctProductConfigController.setGuidAndInit(deviceId);
+        }
+        getConfigLogger().verbose(accountId + ":async_deviceID",
+                "Got device id from DeviceInfo, notifying user profile initialized to SyncListener");
         coreState.getCallbackManager().notifyUserProfileInitialized(deviceId);
     }
 

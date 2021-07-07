@@ -58,9 +58,21 @@ class CleverTapFactory {
                 ctLockManager, callbackManager, deviceInfo, baseDatabaseManager);
         coreState.setControllerManager(controllerManager);
 
-        if (coreState.getDeviceInfo() != null && coreState.getDeviceInfo().getDeviceID() != null) {
+        coreState.getConfig().getLogger()
+                .verbose(config.getAccountId() + ":async_deviceID",
+                        "coreState.getDeviceInfo() = " + coreState.getDeviceInfo());
+        coreState.getConfig().getLogger()
+                .verbose(config.getAccountId() + ":async_deviceID",
+                        "coreState.getDeviceInfo().getDeviceID() = " + coreState.getDeviceInfo().getDeviceID());
+        coreState.getConfig().getLogger()
+                .verbose(config.getAccountId() + ":async_deviceID",
+                        "controllerManager.getInAppFCManager() = " + controllerManager.getInAppFCManager());
+
+        if (coreState.getDeviceInfo() != null && coreState.getDeviceInfo().getDeviceID() != null
+                && controllerManager.getInAppFCManager() == null) {
             coreState.getConfig().getLogger()
-                    .verbose("Initializing InAppFC with device Id = " + coreState.getDeviceInfo().getDeviceID());
+                    .verbose(config.getAccountId() + ":async_deviceID",
+                            "Initializing InAppFC with device Id = " + coreState.getDeviceInfo().getDeviceID());
             controllerManager
                     .setInAppFCManager(new InAppFCManager(context, config, coreState.getDeviceInfo().getDeviceID()));
         }
@@ -112,14 +124,17 @@ class CleverTapFactory {
 
     static void initFeatureFlags(Context context, ControllerManager controllerManager, CleverTapInstanceConfig config,
             DeviceInfo deviceInfo, BaseCallbackManager callbackManager, AnalyticsManager analyticsManager) {
-        Logger.v("Initializing Feature Flags with device Id = " + deviceInfo.getDeviceID());
+
+        config.getLogger().verbose(config.getAccountId() + ":async_deviceID",
+                "Initializing Feature Flags with device Id = " + deviceInfo.getDeviceID());
         if (config.isAnalyticsOnly()) {
             config.getLogger().debug(config.getAccountId(), "Feature Flag is not enabled for this instance");
         } else {
             controllerManager.setCTFeatureFlagsController(CTFeatureFlagsFactory.getInstance(context,
                     deviceInfo.getDeviceID(),
                     config, callbackManager, analyticsManager));
-            config.getLogger().verbose(config.getAccountId(), "Feature Flags initialized");
+            config.getLogger().verbose(config.getAccountId() + ":async_deviceID", "Feature Flags initialized");
         }
+
     }
 }
