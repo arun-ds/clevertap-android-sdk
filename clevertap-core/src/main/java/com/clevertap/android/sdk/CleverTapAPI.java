@@ -29,7 +29,7 @@ import com.clevertap.android.sdk.featureFlags.CTFeatureFlagsController;
 import com.clevertap.android.sdk.inbox.CTInboxActivity;
 import com.clevertap.android.sdk.inbox.CTInboxMessage;
 import com.clevertap.android.sdk.inbox.CTMessageDAO;
-import com.clevertap.android.sdk.interfaces.OnInitDeviceIDListener;
+import com.clevertap.android.sdk.interfaces.OnInitCleverTapIDListener;
 import com.clevertap.android.sdk.product_config.CTProductConfigController;
 import com.clevertap.android.sdk.product_config.CTProductConfigListener;
 import com.clevertap.android.sdk.pushnotification.CTPushNotificationListener;
@@ -607,11 +607,12 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
                 continue;
             }
 
-            if (!Utils.haveDeprecatedFirebaseInstanceId){
-                instance.getConfigLogger().debug(instance.getAccountId(),"It looks like you're using the " +
-                        "latest version of FCM where FirebaseInstanceId is deprecated, hence we won't be able to fetch " +
+            if (!Utils.haveDeprecatedFirebaseInstanceId) {
+                instance.getConfigLogger().debug(instance.getAccountId(), "It looks like you're using the " +
+                        "latest version of FCM where FirebaseInstanceId is deprecated, hence we won't be able to fetch "
+                        +
                         "the token from sender id provided in manifest. Instead we will be using the token provided to us by Firebase.");
-            }else {
+            } else {
                 //get token from Manifest
                 String tokenUsingManifestMetaEntry = Utils
                         .getFcmTokenUsingManifestMetaEntry(context, instance.getCoreState().getConfig());
@@ -1292,11 +1293,18 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
      *
      * @return The attribution identifier currently being used to identify this user.
      *
-     * <p><br><span style="color:red;background:#ffcc99" >&#9888; this method may take a long time to return,
+     * <p><br><span style="background:#ffcc99" >&#9888; this method may take a long time to return,
      * so you should not call it from the application main thread</span></p>
+     *
+     * <p style="color:red;font-size: 25px;margin-left:10px">&#9760;</p>
+     * <b><span style="color:#4d2e00;background:#ffcc99" >Deprecated as of version <code>4.2.0</code> and will be
+     * removed in future versions</span>
+     * </b><br>
+     * <code>Use {@link CleverTapAPI#getCleverTapID(OnInitCleverTapIDListener)} instead</code>
      */
     @SuppressWarnings("unused")
     @WorkerThread
+    @Deprecated
     public String getCleverTapAttributionIdentifier() {
         return coreState.getDeviceInfo().getAttributionID();
     }
@@ -1316,19 +1324,16 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
     }
 
     /**
-     * Returns a unique identifier by which CleverTap identifies this user, on Main thread Callback.
+     * This method is used to decrement the given value
      *
-     * @param onInitDeviceIDListener non-null callback to retrieve identifier on main thread.
+     * Number should be in positive range
+     *
+     * @param key   String
+     * @param value Number
      */
-    public void getCleverTapID(@NonNull OnInitDeviceIDListener onInitDeviceIDListener) {
-        Task<Void> taskDeviceCachedInfo = CTExecutorFactory.executors(getConfig()).ioTask();
-        taskDeviceCachedInfo.execute("getCleverTapID", new Callable<Void>() {
-            @Override
-            public Void call() throws Exception {
-                onInitDeviceIDListener.onInitDeviceID(coreState.getDeviceInfo().getDeviceID());
-                return null;
-            }
-        });
+    @SuppressWarnings("unused")
+    public void decrementValue(final String key, final Number value) {
+        coreState.getAnalyticsManager().decrementValue(key, value);
     }
 
     @RestrictTo(Scope.LIBRARY)
@@ -2203,30 +2208,45 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
         }
     }
 
-  /**
+    /**
+     * Returns a unique identifier by which CleverTap identifies this user, on Main thread Callback.
+     *
+     * @param onInitCleverTapIDListener non-null callback to retrieve identifier on main thread.
+     */
+    public void getCleverTapID(@NonNull OnInitCleverTapIDListener onInitCleverTapIDListener) {
+        Task<Void> taskDeviceCachedInfo = CTExecutorFactory.executors(getConfig()).ioTask();
+        taskDeviceCachedInfo.execute("getCleverTapID", new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                String deviceID = coreState.getDeviceInfo().getDeviceID();
+                if (deviceID != null) {
+                    onInitCleverTapIDListener.onInitCleverTapID(deviceID);
+                } else {
+                    /**
+                     * If cleverTapID not yet generated during first init then set listener, through which
+                     * cleverTapID will be notified when it's generated and ready to use from deviceIDCreated()
+                     *
+                     * Setting callback here makes sure that callback will be give only once, either from
+                     * getCleverTapID() or deviceIDCreated()
+                     */
+                    coreState.getCallbackManager().setOnInitCleverTapIDListener(onInitCleverTapIDListener);
+                }
+                return null;
+            }
+        });
+    }
+
+    /**
      * This method is used to increment the given value
      *
      * Number should be in positive range
      *
-     * @param key String
+     * @param key   String
      * @param value Number
      */
     @SuppressWarnings("unused")
-    public void incrementValue(final String key, final Number value){
-        coreState.getAnalyticsManager().incrementValue(key,value);
-    }
-
-    /**
-     * This method is used to decrement the given value
-     *
-     * Number should be in positive range
-     *
-     * @param key String
-     * @param value Number
-     */
-    @SuppressWarnings("unused")
-    public void decrementValue(final String key, final Number value){
-        coreState.getAnalyticsManager().decrementValue(key,value);
+    public void incrementValue(final String key, final Number value) {
+        coreState.getAnalyticsManager().incrementValue(key, value);
     }
 
     /**
@@ -2450,6 +2470,10 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
             return;
         }
 
+        /**
+         * Reinitialising InAppFCManager with device id, if it's null
+         * during first initialisation from CleverTapFactory.getCoreState()
+         */
         if (coreState.getControllerManager().getInAppFCManager() == null) {
             getConfigLogger().verbose(accountId + ":async_deviceID",
                     "Initializing InAppFC after Device ID Created = " + deviceId);
@@ -2458,8 +2482,8 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
         }
 
         /**
-         * Reinitialising product config & Feature Flag controllers with device id if it's null
-         * during first initialisation
+         * Reinitialising product config & Feature Flag controllers with device id, if it's null
+         * during first initialisation from CleverTapFactory.getCoreState()
          */
         CTFeatureFlagsController ctFeatureFlagsController = coreState.getControllerManager()
                 .getCTFeatureFlagsController();
@@ -2481,6 +2505,11 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
         getConfigLogger().verbose(accountId + ":async_deviceID",
                 "Got device id from DeviceInfo, notifying user profile initialized to SyncListener");
         coreState.getCallbackManager().notifyUserProfileInitialized(deviceId);
+
+        if (coreState.getCallbackManager().getOnInitCleverTapIDListener() != null) {
+            coreState.getCallbackManager().getOnInitCleverTapIDListener().onInitCleverTapID(deviceId);
+        }
+
     }
 
     private CleverTapInstanceConfig getConfig() {
