@@ -1,0 +1,40 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 30
+    defaultConfig {
+        applicationId "com.clevertap.templateapp"
+        minSdkVersion 21
+        targetSdkVersion 30
+        versionCode 01
+        versionName "0.1"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree('libs')
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    implementation 'com.google.firebase:firebase-messaging:21.1.0'
+    //implementation 'com.clevertap.android:clevertap-android-sdk:4.1.1'
+    testImplementation 'junit:junit:4.13.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    implementation project(':pushTemplates')
+    implementation project(':clevertap-core')
+    implementation 'com.google.android.gms:play-services-location:18.0.0'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.5.21'
+}
+
+apply plugin: 'com.google.gms.google-services'

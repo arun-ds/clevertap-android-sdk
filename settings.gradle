@@ -20,3 +20,4 @@ gradleEnterprise {
         termsOfServiceAgree = "yes"
     }
 }
+include ':ptSample'
