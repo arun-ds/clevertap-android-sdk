@@ -12,6 +12,7 @@ import androidx.annotation.RestrictTo;
 import androidx.annotation.RestrictTo.Scope;
 import androidx.annotation.WorkerThread;
 import com.clevertap.android.sdk.CleverTapInstanceConfig;
+import com.clevertap.android.sdk.ClientSecurityManager;
 import com.clevertap.android.sdk.Constants;
 import com.clevertap.android.sdk.Logger;
 import com.clevertap.android.sdk.inbox.CTMessageDAO;
@@ -311,14 +312,12 @@ public class DBAdapter {
 
     private boolean rtlDirtyFlag = true;
 
-    public DBAdapter(Context context, CleverTapInstanceConfig config) {
-        this(context, getDatabaseName(config));
+    private final ClientSecurityManager securityManager;
+
+    public DBAdapter(Context context, CleverTapInstanceConfig config, ClientSecurityManager securityManager) {
+        dbHelper = new DatabaseHelper(context, getDatabaseName(config));
         this.config = config;
-
-    }
-
-    private DBAdapter(Context context, String dbName) {
-        dbHelper = new DatabaseHelper(context, dbName);
+        this.securityManager = securityManager;
     }
 
     /**
@@ -391,17 +390,39 @@ public class DBAdapter {
         final String tName = Table.USER_PROFILES.getName();
         JSONObject profile = null;
         Cursor cursor = null;
-
+        String nonEncryptedData = null;
         try {
             final SQLiteDatabase db = dbHelper.getReadableDatabase();
+            String[] CtId = new String[]{id};
+            String[] LpCtId = {"LP-" + CtId};
+            cursor = db.query(tName, null, "_id =?", LpCtId, null, null, null);
 
-            cursor = db.query(tName, null, "_id =?", new String[]{id}, null, null, null);
-
+            String data = null;
             if (cursor != null && cursor.moveToFirst()) {
                 try {
-                    profile = new JSONObject(cursor.getString(cursor.getColumnIndex(KEY_DATA)));
+                    data = cursor.getString(cursor.getColumnIndex(KEY_DATA));
+                    if (securityManager != null) {
+                        data = securityManager.decryptString(data);
+                    }
+                    profile = new JSONObject(data);
                 } catch (final JSONException e) {
                     // Ignore
+                }
+            }
+
+            //For backward compatibility
+            if (data == null) {
+                if (cursor != null) {
+                    cursor.close();
+                }
+                cursor = db.query(tName, null, "_id =?", CtId, null, null, null);
+                if (cursor != null && cursor.moveToFirst()) {
+                    try {
+                        nonEncryptedData = cursor.getString(cursor.getColumnIndex(KEY_DATA));
+                        profile = new JSONObject(nonEncryptedData);
+                    } catch (final JSONException e) {
+                        // Ignore
+                    }
                 }
             }
         } catch (final SQLiteException e) {
@@ -413,6 +434,10 @@ public class DBAdapter {
             }
         }
 
+        if (nonEncryptedData != null) {
+            storeUserProfile(id, profile);
+            removeUserProfile(id);
+        }
         return profile;
     }
 
@@ -580,8 +605,12 @@ public class DBAdapter {
         try {
             final SQLiteDatabase db = dbHelper.getWritableDatabase();
             final ContentValues cv = new ContentValues();
-            cv.put(KEY_DATA, obj.toString());
-            cv.put("_id", id);
+            String data = obj.toString();
+            if (securityManager != null) {
+                data = securityManager.encryptString(obj.toString());
+            }
+            cv.put(KEY_DATA, data);
+            cv.put("_id", "LP-" + id);
             ret = db.insertWithOnConflict(tableName, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
         } catch (final SQLiteException e) {
             getConfigLogger().verbose("Error adding data to table " + tableName + " Recreating DB");

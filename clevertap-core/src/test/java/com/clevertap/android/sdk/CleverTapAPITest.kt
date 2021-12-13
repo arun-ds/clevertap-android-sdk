@@ -47,7 +47,7 @@ class CleverTapAPITest : BaseTestCase() {
                 mockStatic(Utils::class.java).use {
 
                     // Arrange
-                    `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null))
+                    `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null, null))
                             .thenReturn(corestate)
                     `when`(Utils.getNow()).thenReturn(Int.MAX_VALUE)
 
@@ -80,7 +80,7 @@ class CleverTapAPITest : BaseTestCase() {
             mockStatic(Utils::class.java).use {
                 mockStatic(CleverTapFactory::class.java).use {
                     // Arrange
-                    `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null))
+                    `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null, null))
                             .thenReturn(corestate)
                     `when`(Utils.getNow()).thenReturn(0)
 
@@ -122,7 +122,7 @@ class CleverTapAPITest : BaseTestCase() {
 
             mockStatic(CleverTapFactory::class.java).use {
                 // Arrange
-                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null))
+                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null, null))
                         .thenReturn(corestate)
                 cleverTapAPI = CleverTapAPI.instanceWithConfig(application, cleverTapInstanceConfig)
                 cleverTapAPI.setLocationForGeofences(location, 45)
@@ -143,7 +143,7 @@ class CleverTapAPITest : BaseTestCase() {
             )
             mockStatic(CleverTapFactory::class.java).use {
                 // Arrange
-                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null))
+                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null, null))
                         .thenReturn(corestate)
                 cleverTapAPI = CleverTapAPI.instanceWithConfig(application, cleverTapInstanceConfig)
 
@@ -173,7 +173,7 @@ class CleverTapAPITest : BaseTestCase() {
                     )
             )
             mockStatic(CleverTapFactory::class.java).use {
-                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null))
+                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null, null))
                         .thenReturn(corestate)
                 cleverTapAPI = CleverTapAPI.instanceWithConfig(application, cleverTapInstanceConfig)
 
@@ -203,7 +203,7 @@ class CleverTapAPITest : BaseTestCase() {
                                 JSONObject::class.java
                         )
 
-                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null))
+                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null, null))
                         .thenReturn(corestate)
                 cleverTapAPI = CleverTapAPI.instanceWithConfig(application, cleverTapInstanceConfig)
 
@@ -229,7 +229,7 @@ class CleverTapAPITest : BaseTestCase() {
                     )
             )
             mockStatic(CleverTapFactory::class.java).use {
-                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null))
+                `when`(CleverTapFactory.getCoreState(application, cleverTapInstanceConfig, null, null))
                         .thenReturn(corestate)
                 cleverTapAPI = CleverTapAPI.instanceWithConfig(application, cleverTapInstanceConfig)
 
@@ -261,6 +261,7 @@ class CleverTapAPITest : BaseTestCase() {
                 )
                 `when`(
                         CleverTapFactory.getCoreState(
+                                ArgumentMatchers.any(),
                                 ArgumentMatchers.any(),
                                 ArgumentMatchers.any(),
                                 ArgumentMatchers.any()
@@ -313,6 +314,7 @@ class CleverTapAPITest : BaseTestCase() {
                         CleverTapFactory.getCoreState(
                                 ArgumentMatchers.any(),
                                 ArgumentMatchers.any(),
+                                ArgumentMatchers.any(),
                                 ArgumentMatchers.any()
                         )
                 )
@@ -343,6 +345,7 @@ class CleverTapAPITest : BaseTestCase() {
                         CleverTapFactory.getCoreState(
                                 ArgumentMatchers.any(),
                                 ArgumentMatchers.any(),
+                                ArgumentMatchers.any(),
                                 ArgumentMatchers.any()
                         )
                 )
@@ -371,6 +374,7 @@ class CleverTapAPITest : BaseTestCase() {
             mockStatic(CleverTapFactory::class.java).use {
                 `when`(
                         CleverTapFactory.getCoreState(
+                                ArgumentMatchers.any(),
                                 ArgumentMatchers.any(),
                                 ArgumentMatchers.any(),
                                 ArgumentMatchers.any()
@@ -442,6 +446,7 @@ class CleverTapAPITest : BaseTestCase() {
                         CleverTapFactory.getCoreState(
                                 ArgumentMatchers.any(),
                                 ArgumentMatchers.any(),
+                                ArgumentMatchers.any(),
                                 ArgumentMatchers.any()
                         )
                 )
@@ -466,6 +471,7 @@ class CleverTapAPITest : BaseTestCase() {
             mockStatic(CleverTapFactory::class.java).use {
                 `when`(
                         CleverTapFactory.getCoreState(
+                                ArgumentMatchers.any(),
                                 ArgumentMatchers.any(),
                                 ArgumentMatchers.any(),
                                 ArgumentMatchers.any()

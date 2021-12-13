@@ -108,6 +108,8 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
 
     private WeakReference<InboxMessageButtonListener> inboxMessageButtonListener;
 
+    static ClientSecurityManager securityManager;
+
     /**
      * This method is used to change the credentials of CleverTap account Id and token programmatically
      *
@@ -669,10 +671,10 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
      * @return The {@link CleverTapAPI} object
      */
     @SuppressWarnings("WeakerAccess")
-    public static CleverTapAPI getDefaultInstance(Context context, String cleverTapID) {
+    public static CleverTapAPI getDefaultInstance(Context context, String cleverTapID, ClientSecurityManager clientSecurityManager) {
         // For Google Play Store/Android Studio tracking
         sdkVersion = BuildConfig.SDK_VERSION_STRING;
-
+        securityManager = clientSecurityManager;
         if (defaultConfig != null) {
             return instanceWithConfig(context, defaultConfig, cleverTapID);
         } else {
@@ -693,8 +695,14 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
     @SuppressWarnings("WeakerAccess")
     public static @Nullable
     CleverTapAPI getDefaultInstance(Context context) {
-        return getDefaultInstance(context, null);
+        return getDefaultInstance(context, null, securityManager);
     }
+
+    public static @Nullable
+    CleverTapAPI getDefaultInstance(Context context, ClientSecurityManager securityManager) {
+        return getDefaultInstance(context, null, securityManager);
+    }
+
 
     public static @Nullable
     CleverTapAPI getGlobalInstance(Context context, String _accountId) {
@@ -999,7 +1007,7 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
         this.context = context;
 
         CoreState coreState = CleverTapFactory
-                .getCoreState(context, config, cleverTapID);
+                .getCoreState(context, config, cleverTapID, securityManager);
         setCoreState(coreState);
         getConfigLogger().verbose(config.getAccountId() + ":async_deviceID", "CoreState is set");
 
@@ -2550,13 +2558,14 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
         coreState.getPushProviders().handleToken(token, PushType.ADM, register);
     }
 
-    static void onActivityCreated(Activity activity) {
-        onActivityCreated(activity, null);
+    static void onActivityCreated(Activity activity, ClientSecurityManager securityManager) {
+        onActivityCreated(activity, null, securityManager);
     }
 
     // static lifecycle callbacks
-    static void onActivityCreated(Activity activity, String cleverTapID) {
+    static void onActivityCreated(Activity activity, String cleverTapID, ClientSecurityManager clientSecurityManager) {
         // make sure we have at least the default instance created here.
+        securityManager = clientSecurityManager;
         if (instances == null) {
             CleverTapAPI.createInstanceIfAvailable(activity.getApplicationContext(), null, cleverTapID);
         }
@@ -2630,7 +2639,7 @@ public class CleverTapAPI implements CTInboxActivity.InboxActivityListener {
         try {
             if (_accountId == null) {
                 try {
-                    return CleverTapAPI.getDefaultInstance(context, cleverTapID);
+                    return CleverTapAPI.getDefaultInstance(context, cleverTapID, securityManager);
                 } catch (Throwable t) {
                     Logger.v("Error creating shared Instance: ", t.getCause());
                     return null;

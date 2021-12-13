@@ -20,7 +20,7 @@ import java.util.concurrent.Callable;
 class CleverTapFactory {
 
     static CoreState getCoreState(Context context, CleverTapInstanceConfig cleverTapInstanceConfig,
-            String cleverTapID) {
+            String cleverTapID, ClientSecurityManager securityManager) {
         CoreState coreState = new CoreState(context);
 
         CoreMetaData coreMetaData = new CoreMetaData();
@@ -43,10 +43,10 @@ class CleverTapFactory {
         EventMediator eventMediator = new EventMediator(context, config, coreMetaData);
         coreState.setEventMediator(eventMediator);
 
-        LocalDataStore localDataStore = new LocalDataStore(context, config);
+        LocalDataStore localDataStore = new LocalDataStore(context, config, securityManager);
         coreState.setLocalDataStore(localDataStore);
 
-        DeviceInfo deviceInfo = new DeviceInfo(context, config, cleverTapID, coreMetaData);
+        DeviceInfo deviceInfo = new DeviceInfo(context, config, cleverTapID, coreMetaData, securityManager);
         coreState.setDeviceInfo(deviceInfo);
 
         BaseCallbackManager callbackManager = new CallbackManager(config, deviceInfo);
@@ -55,7 +55,7 @@ class CleverTapFactory {
         SessionManager sessionManager = new SessionManager(config, coreMetaData, validator, localDataStore);
         coreState.setSessionManager(sessionManager);
 
-        DBManager baseDatabaseManager = new DBManager(config, ctLockManager);
+        DBManager baseDatabaseManager = new DBManager(config, ctLockManager, securityManager);
         coreState.setDatabaseManager(baseDatabaseManager);
 
         ControllerManager controllerManager = new ControllerManager(context, config,

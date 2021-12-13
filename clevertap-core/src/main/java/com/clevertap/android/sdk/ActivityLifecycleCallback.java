@@ -21,7 +21,7 @@ public final class ActivityLifecycleCallback {
      * @param cleverTapID Custom CleverTap ID
      */
     @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
-    public static synchronized void register(android.app.Application application, final String cleverTapID) {
+    public static synchronized void register(android.app.Application application, final String cleverTapID, ClientSecurityManager securityManager) {
         if (application == null) {
             Logger.i("Application instance is null/system API is too old");
             return;
@@ -39,9 +39,9 @@ public final class ActivityLifecycleCallback {
                     @Override
                     public void onActivityCreated(Activity activity, Bundle bundle) {
                         if (cleverTapID != null) {
-                            CleverTapAPI.onActivityCreated(activity, cleverTapID);
+                            CleverTapAPI.onActivityCreated(activity, cleverTapID, securityManager);
                         } else {
-                            CleverTapAPI.onActivityCreated(activity);
+                            CleverTapAPI.onActivityCreated(activity, securityManager);
                         }
                     }
 
@@ -88,5 +88,15 @@ public final class ActivityLifecycleCallback {
     @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     public static synchronized void register(android.app.Application application) {
         register(application, null);
+    }
+
+    /**
+     * Enables lifecycle callbacks for Android devices
+     *
+     * @param application App's Application object
+     */
+    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
+    public static synchronized void register(android.app.Application application, ClientSecurityManager securityManager) {
+        register(application, null, securityManager);
     }
 }

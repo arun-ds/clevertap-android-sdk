@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import androidx.annotation.WorkerThread;
 import com.clevertap.android.sdk.CTLockManager;
 import com.clevertap.android.sdk.CleverTapInstanceConfig;
+import com.clevertap.android.sdk.ClientSecurityManager;
 import com.clevertap.android.sdk.Constants;
 import com.clevertap.android.sdk.StorageHelper;
 import com.clevertap.android.sdk.db.DBAdapter.Table;
@@ -21,17 +22,20 @@ public class DBManager extends BaseDatabaseManager {
 
     private final CleverTapInstanceConfig config;
 
+    private final ClientSecurityManager securityManager;
+
     public DBManager(CleverTapInstanceConfig config,
-            CTLockManager ctLockManager) {
+                     CTLockManager ctLockManager, ClientSecurityManager securityManager) {
         this.config = config;
         this.ctLockManager = ctLockManager;
+        this.securityManager = securityManager;
     }
 
     @WorkerThread
     @Override
     public DBAdapter loadDBAdapter(final Context context) {
         if (dbAdapter == null) {
-            dbAdapter = new DBAdapter(context, config);
+            dbAdapter = new DBAdapter(context, config, securityManager);
             dbAdapter.cleanupStaleEvents(DBAdapter.Table.EVENTS);
             dbAdapter.cleanupStaleEvents(DBAdapter.Table.PROFILE_EVENTS);
             dbAdapter.cleanupStaleEvents(DBAdapter.Table.PUSH_NOTIFICATION_VIEWED);

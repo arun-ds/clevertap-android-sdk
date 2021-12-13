@@ -438,6 +438,8 @@ public class DeviceInfo {
 
     private final CoreMetaData mCoreMetaData;
 
+    private final ClientSecurityManager securityManager;
+
     private final ArrayList<ValidationResult> validationResults = new ArrayList<>();
 
     /**
@@ -488,11 +490,12 @@ public class DeviceInfo {
     }
 
     DeviceInfo(Context context, CleverTapInstanceConfig config, String cleverTapID,
-            CoreMetaData coreMetaData) {
+            CoreMetaData coreMetaData, ClientSecurityManager securityManager) {
         this.context = context;
         this.config = config;
         this.library = null;
         mCoreMetaData = coreMetaData;
+        this.securityManager = securityManager;
         onInitDeviceInfo(cleverTapID);
         getConfigLogger().verbose(config.getAccountId() + ":async_deviceID", "DeviceInfo() called");
     }
@@ -944,5 +947,9 @@ public class DeviceInfo {
     private void updateFallbackID(String fallbackId) {
         getConfigLogger().verbose(this.config.getAccountId(), "Updating the fallback id - " + fallbackId);
         StorageHelper.putString(context, getFallbackIdStorageKey(), fallbackId);
+    }
+
+    public ClientSecurityManager getSecurityManager() {
+        return securityManager;
     }
 }

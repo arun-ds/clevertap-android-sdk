@@ -5,10 +5,13 @@ import android.text.TextUtils;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.RestrictTo.Scope;
 import com.clevertap.android.sdk.CleverTapInstanceConfig;
+import com.clevertap.android.sdk.ClientSecurityManager;
 import com.clevertap.android.sdk.Constants;
 import com.clevertap.android.sdk.DeviceInfo;
 import com.clevertap.android.sdk.StorageHelper;
 import com.clevertap.android.sdk.utils.CTJsonConverter;
+
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -67,7 +70,23 @@ public class LoginInfoProvider {
      * @return - All pairs of cached <Identity_Value, Guid> for this account in json format.
      */
     public JSONObject getCachedGUIDs() {
-        String json = StorageHelper.getStringFromPrefs(context, config, Constants.CACHED_GUIDS_KEY, null);
+        String json = StorageHelper.getStringFromPrefs(context, config, "LP-" + Constants.CACHED_GUIDS_KEY, null);
+        if (json != null) {
+            ClientSecurityManager securityManager = deviceInfo.getSecurityManager();
+            if (securityManager != null) {
+                json = securityManager.decryptString(json);
+            }
+        }else{
+            json = StorageHelper.getStringFromPrefs(context, config, Constants.CACHED_GUIDS_KEY, null);
+            if (json != null) {
+                try {
+                    setCachedGUIDs(new JSONObject(json));
+                    StorageHelper.remove(context, Constants.CACHED_GUIDS_KEY);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
         config.log(LoginConstants.LOG_TAG_ON_USER_LOGIN,
                 "getCachedGUIDs:[" + json + "]");
         return CTJsonConverter.toJsonObject(json, config.getLogger(), config.getAccountId());
@@ -84,7 +103,11 @@ public class LoginInfoProvider {
         }
         try {
             String cachedGuid = cachedGUIDs.toString();
-            StorageHelper.putString(context, StorageHelper.storageKeyWithSuffix(config, Constants.CACHED_GUIDS_KEY),
+            ClientSecurityManager securityManager = deviceInfo.getSecurityManager();
+            if (securityManager != null) {
+                cachedGuid = securityManager.encryptString(cachedGuid);
+            }
+            StorageHelper.putString(context, StorageHelper.storageKeyWithSuffix(config, "LP-" + Constants.CACHED_GUIDS_KEY),
                     cachedGuid);
             config.log(LoginConstants.LOG_TAG_ON_USER_LOGIN,
                     "setCachedGUIDs:[" + cachedGuid + "]");

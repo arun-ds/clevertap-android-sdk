@@ -46,10 +46,12 @@ public class LocalDataStore {
 
     private final String eventNamespace = "local_events";
 
+    private ClientSecurityManager securityManager;
 
-    LocalDataStore(Context context, CleverTapInstanceConfig config) {
+    LocalDataStore(Context context, CleverTapInstanceConfig config, ClientSecurityManager securityManager) {
         this.context = context;
         this.config = config;
+        this.securityManager = securityManager;
         this.es = Executors.newFixedThreadPool(1);
         inflateLocalProfileAsync(context);
     }
@@ -421,7 +423,7 @@ public class LocalDataStore {
             @Override
             public void run() {
                 if (dbAdapter == null) {
-                    dbAdapter = new DBAdapter(context, config);
+                    dbAdapter = new DBAdapter(context, config, securityManager);
                 }
                 synchronized (PROFILE_FIELDS_IN_THIS_SESSION) {
                     try {
